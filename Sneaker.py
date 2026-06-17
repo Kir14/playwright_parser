@@ -9,7 +9,7 @@ class Sneaker:
     image: str
     description: str
     color: str
-    sizes: List[str] = field(default_factory=list)  # ✅ Fixed
+    sizes: List[str] = field(default_factory=list)
 
     def __str__(self):
         return (

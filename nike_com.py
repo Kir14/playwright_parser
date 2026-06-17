@@ -1,6 +1,6 @@
 from playwright.sync_api import sync_playwright
 from Sneaker import Sneaker
-import csv
+from WriterCSV import WriterCSV
 
 
 def close_popup(page):
@@ -9,7 +9,7 @@ def close_popup(page):
         btn.click()
 
 
-def get_info_product(page):
+def get_info_products(page):
     products = []
     elements = page.locator("figure")
     print(elements.count())
@@ -23,10 +23,6 @@ def get_info_product(page):
             Sneaker(name, price, href, img, None, [])
         )
     return products
-
-
-def write_to_csv(writer, product):
-    writer.writerow(product.__dict__)
 
 
 def nike_search():
@@ -43,55 +39,42 @@ def nike_search():
         page.goto("https://www.nike.com/lu/en/w/mens-shoes-nik1zy7ok")
 
         page.wait_for_load_state("load")          # Default - page fully loaded
-
         close_popup(page)
 
-        products = get_info_product(page)
+        # get all products from page
+        products = get_info_products(page)
 
-        csvfile = open("nike_shoes.csv", 'w', newline='', encoding='utf-8')
-        fieldnames = [
-            "name"
-            , "price"
-            , "url"
-            , "image"
-            , "description"
-            , "color"
-            , "sizes"
-        ]
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-        writer.writeheader()
+        writercsv = WriterCSV("nike_shoes.csv")
+        writercsv.open()
 
         counter = 1
         n = len(products)
         try:
-            for pr in products:
+            for sneaker in products:
                 print(f"{counter} of {n}")
                 page_product = context.new_page()
-                page_product.goto(pr.url)
+                page_product.goto(sneaker.url)
                 page_product.wait_for_load_state("load")          # Default - page fully loaded
                 close_popup(page_product)
                 elements = page_product.query_selector_all('[data-testid="pdp-grid-selector-item"]')
                 for element in elements:
-                # Get the text from the label inside
+                    # Get the text from the label inside
                     label = element.query_selector('label')
                     if label:
                         size_text = label.inner_text()
-                        pr.sizes.append(size_text)
+                        sneaker.sizes.append(size_text)
                 desc = page_product.locator("h2#pdp_product_subtitle").text_content()
                 col = page_product.locator('[data-testid="product-description-color-description"]').text_content()
-                pr.description = desc
-                pr.color = col
-                write_to_csv(writer, pr)
+                sneaker.description = desc
+                sneaker.color = col
+                writercsv.write_sneaker(sneaker)
                 page_product.close()
                 counter += 1
         except Exception as e:
             print(e)
         finally:
             # Always close the file
-            if csvfile and not csvfile.closed:
-                csvfile.close()
-                print("File closed successfully")
+            writercsv.close()
 
         # Or use input to keep browser open until you press Enter
         # input("Press Enter to close the browser...")
